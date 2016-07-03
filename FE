@@ -1,0 +1,131 @@
+Sub FE横もちマクロ1()
+
+     Dim OpenFileName As String
+     
+     '画面更新の停止
+      Application.ScreenUpdating = False
+      
+     '過去のデータ削除
+     ActiveSheet.Cells.Select
+     Selection.ClearContents
+     
+      Worksheets("重複合算").Activate
+     Cells.Select
+     Selection.ClearContents
+     
+      Worksheets("コピー").Activate
+     Cells.Select
+     Selection.ClearContents
+     
+     
+     '対象のブックを指定（Pathの取得）
+     OpenFileName = Application.GetOpenFilename("Microsoft Excel ブック,*.xls")
+     '対象のブックを開く
+     Workbooks.Open Filename:=OpenFileName
+     
+     'データの抽出
+     Worksheets(1).Range("A1:L1").Select
+                                Range(Selection, Selection.End(xlDown)).Select
+                                Selection.Copy
+                                
+     
+     'フォーマットの作成のデータシートに貼り付け
+     Windows("FE横もちformat変換マクロ.xlsm").Activate
+     Worksheets("コピー").Select
+     Range("A1").Select
+     ActiveSheet.Paste
+     
+     '関数で作成したFromTo,Item,date連続データを重複合算シートにコピー&Filter解除
+     Worksheets("format").Activate
+     Dim w As Worksheet
+    For Each w In Worksheets
+        If w.AutoFilterMode Then w.AutoFilterMode = False
+    Next w
+     ActiveSheet.Columns("N:N").SpecialCells(xlCellTypeVisible).Copy
+    Worksheets("重複合算").Select
+     ActiveSheet.Range("A1").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+    'コピーした連続データをユニークにするために重複削除
+    Columns("A:A").Select
+    ActiveSheet.Range("$A$1:$A$2000").RemoveDuplicates Columns:=1, Header:=xlNo
+
+
+    'ユニークにしたデータでフォーマットデータをソートしてquantityを足していく
+    
+    Dim MyStr As String
+    Dim i As Long
+    Dim cr As String
+    Dim sumquantity As Double
+    For i = 2 To Cells(Rows.Count, 1).End(xlUp).Row
+   
+        cr = Worksheets("重複合算").Range("A" & i)
+        MyStr = Worksheets("重複合算").Range("A" & i)
+   
+   Worksheets("format").Select
+   ActiveSheet.Columns("N:N").AutoFilter Field:=1, Criteria1:=cr
+
+   sumquantity = Worksheets("format").Application.WorksheetFunction.Subtotal(9, Range("G2:G2000"))
+   Worksheets("重複合算").Range("B" & i) = sumquantity
+
+Next i
+
+    '関数のないフォーマットにデータ貼り付け
+     Worksheets("重複削除済みformat").Activate
+     Cells.Select
+     Cells.SpecialCells(xlCellTypeVisible).Copy
+     Worksheets("関数なしformat").Activate
+     Range("A1").Select
+     Selection.PasteSpecial Paste:=xlPasteValues
+     
+    
+
+     'Serverにあるアップロードファイルに保存
+     
+     With Worksheets("関数なしformat")
+     ChDir _
+        "U:\AQL_IT\030_Application\070_Kewill\04_Project\FE横もち"
+         Workbooks.Open Filename:= _
+        "U:\AQL_IT\030_Application\070_Kewill\04_Project\FE横もち\FE横もちformat.xlsx"
+            Cells.Select
+            Selection.ClearContents
+        .Range("A1").CurrentRegion.SpecialCells(xlCellTypeVisible).Copy
+            Workbooks("FE横もちformat.xlsx").Worksheets(1).Range("A1").Select
+            Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    End With
+     
+     'Fromatにあるブランク行を消す
+     Dim lRow As Long
+     Dim k As Long
+      lRow = Cells(Rows.Count, 1).End(xlUp).Row
+      Application.ScreenUpdating = False
+  For k = Range("A1").End(xlDown).Row To 2 Step -1
+    With Cells(k, "A")
+       If .Value Like "" Then
+      
+       Cells(k, 1).EntireRow.Delete
+      End If
+    End With
+     Next k
+     
+     'セーブして閉じる
+     ActiveWindow.Close Savechanges:=True
+     
+     'コピー元を閉じる
+     
+     '元データに戻る
+    Windows("FE横もちformat変換マクロ.xlsm").Activate
+     Worksheets("コピー").Select
+     
+     '画面更新の開始
+      Application.ScreenUpdating = True
+     
+     MsgBox "フォーマット変換が終了しました。"
+     
+   
+     
+End Sub
+
+
